@@ -6,8 +6,9 @@ from sqlalchemy.sql import func
 from typing import Optional
 import uuid
 from app.database import Base
-from app.models.agent_profile import AgentProfile
-from app.models.enums import OnboardingStatus, UserRole
+from app.models.properties.property import Property
+from app.models.usermodels.agent_profile import AgentProfile
+from app.enums.user_enums import OnboardingStatus, UserRole
 
 class User(Base):
     __tablename__ = "users"
@@ -35,3 +36,5 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=func.now(), onupdate=func.now())
     
     agent_profile: Mapped["AgentProfile"] = relationship("AgentProfile", backref="user", uselist=False, cascade="all, delete-orphan")
+    
+    properties: Mapped[list["Property"]] = relationship("Property", backref="agent", cascade="all, delete-orphan")

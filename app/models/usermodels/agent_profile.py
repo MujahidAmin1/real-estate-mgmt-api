@@ -1,12 +1,9 @@
 from app.database import Base
-
-from sqlalchemy import UUID, Boolean, Column, ForeignKey, Integer, String, DateTime, Enum
-from sqlalchemy.orm import relationship, mapped_column, Mapped
-from sqlalchemy.sql import func
+from sqlalchemy import UUID, Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy.orm import mapped_column, Mapped
 from typing import Optional
 import uuid
 from app.database import Base
-from app.models.enums import OnboardingStatus, UserRole
 
 class AgentProfile(Base):
     __tablename__ = "agent_profiles"
