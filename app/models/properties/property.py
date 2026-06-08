@@ -3,10 +3,11 @@ from decimal import Decimal
 from typing import Optional
 import uuid
 from app.database import Base
-from sqlalchemy import DECIMAL, UUID, Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy import DECIMAL, UUID, DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from app.enums.property_enum import ListingType, PropertyStatus, PropertyType
+from app.models.properties.property_image import PropertyImage
 
 class Property(Base):
     __tablename__ = "properties"
@@ -14,7 +15,7 @@ class Property(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid.uuid4
+        default=uuid.uuid7
     )
 
     agent_id: Mapped[uuid.UUID] = mapped_column(
@@ -46,7 +47,9 @@ class Property(Base):
         nullable=False,
         server_default=PropertyStatus.available.value
     )
-
+    
+    image_urls: Mapped[list] = mapped_column(String, nullable=False, )
+    
     bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     bathrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -69,4 +72,10 @@ class Property(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False
+    )
+    
+    images: Mapped[list["PropertyImage"]] = relationship(
+        "PropertyImage",
+        back_populates="property",
+        cascade="all, delete-orphan"
     )
