@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 from datetime import datetime 
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 import uuid
 from app.database import Base
 from sqlalchemy import DECIMAL, UUID, DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from app.enums.property_enum import ListingType, PropertyStatus, PropertyType
-from app.models.properties.property_image import PropertyImage
+
+if TYPE_CHECKING:
+    from app.models.properties.property_image import PropertyImage
 
 class Property(Base):
     __tablename__ = "properties"
@@ -74,7 +78,7 @@ class Property(Base):
         nullable=False
     )
     
-    images: Mapped[list["PropertyImage"]] = relationship(
+    images: Mapped[list[PropertyImage]] = relationship(
         "PropertyImage",
         back_populates="property",
         cascade="all, delete-orphan"

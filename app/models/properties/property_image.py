@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import UUID, Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from app.database import Base
-from app.models.properties.property import Property
 
+if TYPE_CHECKING:
+    from app.models.properties.property import Property
 
 class PropertyImage(Base):
     __tablename__ = "property_images"
@@ -43,7 +48,7 @@ class PropertyImage(Base):
         server_default=func.now()
     )
 
-    property: Mapped["Property"] = relationship(
+    property: Mapped[Property] = relationship(
         "Property",
         back_populates="images"
     )

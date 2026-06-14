@@ -35,7 +35,9 @@ class UserResponse(BaseModel):
 class LoginDto(BaseModel):
     email: EmailStr
     password: str
-
+    
+class RefreshSchema(BaseModel):
+    refresh_token: str
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
