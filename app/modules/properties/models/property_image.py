@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import UUID, Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from app.database import Base
+from app.db.database import Base
 
 if TYPE_CHECKING:
-    from app.models.properties.property import Property
+    from app.modules.properties.models.property import Property
 
 class PropertyImage(Base):
     __tablename__ = "property_images"
@@ -30,7 +30,7 @@ class PropertyImage(Base):
         String,
         nullable=False
     )
-
+    public_id: Mapped[str] = mapped_column(String, nullable=False)
     is_primary: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

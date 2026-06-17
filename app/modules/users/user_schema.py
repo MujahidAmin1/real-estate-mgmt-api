@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.enums.user_enums import OnboardingStatus, UserRole
+from app.modules.users.user_enums import OnboardingStatus, UserRole
 
 
 class UserCreate(BaseModel):

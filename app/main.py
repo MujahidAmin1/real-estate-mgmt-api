@@ -2,10 +2,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from app.apscheduler import delete_expired_tokens
-from app.database import engine, Base
-from app.routes import auth
+from fastapi.staticfiles import StaticFiles
+from app.core.apscheduler import delete_expired_tokens
+from app.db.database import engine, Base
+from app.modules.users import auth_router
+from app.modules.properties import property_routes
 from apscheduler.schedulers.background import BackgroundScheduler
+import os
 from app.utils.exceptions import (
     NotFoundException,
     ForbiddenException,
@@ -15,12 +18,18 @@ from app.utils.exceptions import (
 )
 
 
+uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+
 Base.metadata.create_all(bind=engine)
 scheduler: BackgroundScheduler = BackgroundScheduler()
 
 app = FastAPI(title="Real Estate Management API")
 
-app.include_router(auth.router)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
+app.include_router(auth_router.router)
+app.include_router(property_routes.router)
 
 @app.get("/")
 def read_root():

@@ -4,14 +4,14 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 import uuid
-from app.database import Base
+from app.db.database import Base
 from sqlalchemy import DECIMAL, UUID, DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
-from app.enums.property_enum import ListingType, PropertyStatus, PropertyType
+from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
 
 if TYPE_CHECKING:
-    from app.models.properties.property_image import PropertyImage
+    from app.modules.properties.models.property_image import PropertyImage
 
 class Property(Base):
     __tablename__ = "properties"
@@ -52,7 +52,7 @@ class Property(Base):
         server_default=PropertyStatus.available.value
     )
     
-    image_urls: Mapped[list] = mapped_column(String, nullable=False, )
+    image_urls: Mapped[str] = mapped_column(String, nullable=False, server_default="")
     
     bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 

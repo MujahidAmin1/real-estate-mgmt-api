@@ -5,11 +5,11 @@ from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy.sql import func
 from typing import Optional
 import uuid
-from app.database import Base
-from app.models.properties.property import Property
-from app.models.usermodels.agent_profile import AgentProfile
-from app.enums.user_enums import OnboardingStatus, UserRole
-from app.models.usermodels.user_profile import UserProfile
+from app.db.database import Base
+from app.modules.properties.models.property import Property
+from app.modules.users.models.agent_profile import AgentProfile
+from app.modules.users.user_enums import OnboardingStatus, UserRole
+from app.modules.users.models.user_profile import UserProfile
 
 class User(Base):
     __tablename__ = "users"

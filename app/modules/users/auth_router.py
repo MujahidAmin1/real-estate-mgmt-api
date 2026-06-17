@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from app.database import get_db
-from app.dependencies import get_current_user
-from app.models.usermodels.refresh_tokens import RefreshToken
-from app.schemas.user_schema import LoginDto, RefreshSchema, UserCreate, UserResponse
-from app.models.usermodels.user import User
+from app.db.database import get_db
+from app.utils.dependencies import get_current_user
+from app.modules.users.models.refresh_tokens import RefreshToken
+from app.modules.users.user_schema import LoginDto, RefreshSchema, UserCreate, UserResponse
+from app.modules.users.models.user import User
 from sqlalchemy.orm import Session
 from app.utils import jwt
 from app.utils.hashing import hash_password, verify_password
@@ -25,6 +25,7 @@ def register_user(body: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return user
+
 
 @router.post("/login", response_model=UserResponse)
 def login(body: LoginDto, db: Session = Depends(get_db)):

@@ -2,7 +2,7 @@ from sqlalchemy import UUID, ForeignKey, String, Text
 from sqlalchemy.orm import mapped_column, Mapped
 from typing import Optional
 import uuid
-from app.database import Base
+from app.db.database import Base
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"

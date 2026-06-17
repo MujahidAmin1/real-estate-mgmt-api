@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, field_validator
-from app.enums.property_enum import ListingType, PropertyStatus, PropertyType
+from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
 
 
 class PropertyImageCreate(BaseModel):
@@ -31,7 +31,6 @@ class PropertyCreate(BaseModel):
     property_type: PropertyType
     listing_type: ListingType
     status: PropertyStatus = PropertyStatus.available
-    image_urls: str
     bedrooms: Optional[int] = None
     bathrooms: Optional[int] = None
     size_sqm: Optional[float] = None
@@ -55,7 +54,6 @@ class PropertyUpdate(BaseModel):
     property_type: Optional[PropertyType] = None
     listing_type: Optional[ListingType] = None
     status: Optional[PropertyStatus] = None
-    image_urls: Optional[str] = None
     bedrooms: Optional[int] = None
     bathrooms: Optional[int] = None
     size_sqm: Optional[float] = None

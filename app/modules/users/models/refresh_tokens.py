@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import UUID, Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base
+from app.db.database import Base
 
 
 class RefreshToken(Base):

@@ -3,7 +3,7 @@ from uuid import uuid7
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 
-from app.config import settings
+from app.core.config import settings
 
 def create_access_token(user_id: str, role: str) -> str:
     now = datetime.now(timezone.utc)
