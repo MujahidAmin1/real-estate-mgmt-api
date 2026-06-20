@@ -83,3 +83,9 @@ class Property(Base):
         back_populates="property",
         cascade="all, delete-orphan"
     )
+    
+    favorites = relationship(
+        "Favorite",
+        back_populates="property",
+        cascade="all, delete-orphan"
+    )

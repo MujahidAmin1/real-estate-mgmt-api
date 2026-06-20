@@ -5,6 +5,10 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.core.apscheduler import delete_expired_tokens
 from app.db.database import engine, Base
+from app.modules.admin import admin_router
+from app.modules.payments import payment_router
+from app.modules.profile import profile_router
+from app.modules.properties import favourites_router
 from app.modules.users import auth_router
 from app.modules.properties import property_routes
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -28,12 +32,16 @@ app = FastAPI(title="Real Estate Management API")
 
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
+app.include_router(admin_router.router)
 app.include_router(auth_router.router)
+app.include_router(profile_router.router)
 app.include_router(property_routes.router)
+app.include_router(favourites_router.router)
+app.include_router(payment_router.router)
 
 @app.get("/")
 def read_root():
-    return {"message: Real Estate Management API is working"}
+    return {"message": "Real Estate Management API is working"}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

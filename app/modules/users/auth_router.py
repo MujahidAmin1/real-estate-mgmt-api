@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.db.database import get_db
+from app.modules.users.models.user_profile import UserProfile
 from app.utils.dependencies import get_current_user
 from app.modules.users.models.refresh_tokens import RefreshToken
 from app.modules.users.user_schema import LoginDto, RefreshSchema, UserCreate, UserResponse

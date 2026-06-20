@@ -3,20 +3,21 @@ from decimal import Decimal
 import os
 from typing import Optional
 import uuid
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
-from app.core.cloudinary import delete_image, upload_image
+from app.services.cloudinary import delete_image, upload_image
 from app.db.database import get_db
 from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
+from app.modules.properties.property_filters import PropertyFilters
 from app.modules.users.user_enums import UserRole
 from app.modules.properties.models.property import Property
 from app.modules.properties.models.property_image import PropertyImage
 from app.modules.users.models.user import User
-from app.modules.properties.property_schema import PropertyCreate, PropertyResponse, PropertyUpdate
+from app.modules.properties.property_schema import PropertyResponse, PropertyUpdate
 from app.utils.dependencies import require_role
 import asyncio
 from functools import partial
-from app.utils.exceptions import NotFoundException, ForbiddenException, ConflictException, UnauthorizedException
+from app.utils.exceptions import NotFoundException, ForbiddenException
 router = APIRouter(prefix="/properties", tags=["Properties"])
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "properties")
@@ -129,3 +130,27 @@ def delete_property(
 
     db.delete(property)
     db.commit()
+    
+    
+@router.get("/", response_model=PropertyResponse)
+def get_properties(
+    filters: PropertyFilters = Depends(),
+    db: Session = Depends(get_db),
+    ):
+    query = db.query(Property)
+    if filters.property_type:
+        query.filter(Property.property_type == filters.property_type)
+        
+    if filters.listing_type:
+        query = query.filter(Property.listing_type == filters.listing_type)
+
+    if filters.property_status:
+        query = query.filter(Property.status == filters.property_status)
+
+    if filters.min_price is not None:
+        query = query.filter(Property.price >= filters.min_price)
+
+    if filters.max_price is not None:
+        query = query.filter(Property.price <= filters.max_price)
+
+    return query.all()

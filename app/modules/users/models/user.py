@@ -1,13 +1,12 @@
 from datetime import datetime
-
 from sqlalchemy import UUID, Boolean, Column, Integer, String, DateTime, Enum
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy.sql import func
 from typing import Optional
 import uuid
 from app.db.database import Base
+from app.modules.profile.models.agent_profile import AgentProfile
 from app.modules.properties.models.property import Property
-from app.modules.users.models.agent_profile import AgentProfile
 from app.modules.users.user_enums import OnboardingStatus, UserRole
 from app.modules.users.models.user_profile import UserProfile
 
@@ -39,3 +38,8 @@ class User(Base):
     agent_profile: Mapped["AgentProfile"] = relationship("AgentProfile", backref="user", uselist=False, cascade="all, delete-orphan")
     user_profile: Mapped["UserProfile"] = relationship("UserProfile", backref="user", uselist=False, cascade="all, delete-orphan")
     properties: Mapped[list["Property"]] = relationship("Property", backref="agent", cascade="all, delete-orphan")
+    favorites = relationship(
+        "Favorite",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
