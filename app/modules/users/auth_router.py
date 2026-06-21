@@ -8,6 +8,7 @@ from app.modules.users.user_schema import LoginDto, RefreshSchema, UserCreate, U
 from app.modules.users.models.user import User
 from sqlalchemy.orm import Session
 from app.utils import jwt
+from app.utils.exceptions import NotFoundException
 from app.utils.hashing import hash_password, verify_password
 from app.utils.jwt import create_access_token, create_refresh_token, verify_refresh_token
 
@@ -31,7 +32,10 @@ def register_user(body: UserCreate, db: Session = Depends(get_db)):
 def login(body: LoginDto, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
 
-    if not user or not verify_password(body.password, user.password):
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not verify_password(body.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     access_token = create_access_token(str(user.id), user.role)

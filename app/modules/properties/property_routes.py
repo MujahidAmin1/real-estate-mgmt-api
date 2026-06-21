@@ -4,7 +4,9 @@ import os
 from typing import Optional
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+from app.core.pagination_schema import PaginatedResponse, PaginationMeta
 from app.services.cloudinary import delete_image, upload_image
 from app.db.database import get_db
 from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
@@ -14,7 +16,7 @@ from app.modules.properties.models.property import Property
 from app.modules.properties.models.property_image import PropertyImage
 from app.modules.users.models.user import User
 from app.modules.properties.property_schema import PropertyResponse, PropertyUpdate
-from app.utils.dependencies import require_role
+from app.utils.dependencies import PaginationParams, require_role
 import asyncio
 from functools import partial
 from app.utils.exceptions import NotFoundException, ForbiddenException
@@ -132,25 +134,54 @@ def delete_property(
     db.commit()
     
     
-@router.get("/", response_model=PropertyResponse)
+@router.get("/", response_model=PaginatedResponse[PropertyResponse])
 def get_properties(
+    pagination: PaginationParams = Depends(),
     filters: PropertyFilters = Depends(),
     db: Session = Depends(get_db),
     ):
     query = db.query(Property)
     if filters.property_type:
-        query.filter(Property.property_type == filters.property_type)
-        
+        query = query.filter(
+            Property.property_type == filters.property_type
+        )
+
     if filters.listing_type:
-        query = query.filter(Property.listing_type == filters.listing_type)
+        query = query.filter(
+            Property.listing_type == filters.listing_type
+        )
 
     if filters.property_status:
-        query = query.filter(Property.status == filters.property_status)
+        query = query.filter(
+            Property.status == filters.property_status
+        )
 
     if filters.min_price is not None:
-        query = query.filter(Property.price >= filters.min_price)
+        query = query.filter(
+            Property.price >= filters.min_price
+        )
 
     if filters.max_price is not None:
-        query = query.filter(Property.price <= filters.max_price)
+        query = query.filter(
+            Property.price <= filters.max_price
+        )
 
-    return query.all()
+    total = query.count()
+
+    properties = (
+        query
+        .order_by(Property.created_at.desc())
+        .offset(pagination.offset)
+        .limit(pagination.limit)
+        .all()
+    )
+
+    return PaginatedResponse(
+        data=properties,
+        meta=PaginationMeta(
+            total=total,
+            page=pagination.page,
+            limit=pagination.limit,
+            pages=-(-total // pagination.limit)
+        )
+    )

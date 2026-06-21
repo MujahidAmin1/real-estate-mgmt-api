@@ -1,6 +1,6 @@
 from typing import Callable
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -40,3 +40,13 @@ def require_role(*roles: UserRole) -> Callable:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return current_user
     return role_checker
+
+class PaginationParams:
+    def __init__(
+        self,
+        page: int = Query(default=1, ge=1),
+        limit: int = Query(default=10, ge=1, le=100)
+    ):
+        self.page = page
+        self.limit = limit
+        self.offset = (page - 1) * limit
