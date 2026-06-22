@@ -1,21 +1,42 @@
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.config import settings
 from app.db.database import get_db
-from app.modules.users.models.user_profile import UserProfile
 from app.utils.dependencies import get_current_user
 from app.modules.users.models.refresh_tokens import RefreshToken
-from app.modules.users.user_schema import LoginDto, RefreshSchema, UserCreate, UserResponse
+from app.modules.users.user_schema import AuthResponse, LoginDto, RefreshSchema, UserCreate
 from app.modules.users.models.user import User
 from sqlalchemy.orm import Session
 from app.utils import jwt
-from app.utils.exceptions import NotFoundException
 from app.utils.hashing import hash_password, verify_password
 from app.utils.jwt import create_access_token, create_refresh_token, verify_refresh_token
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-@router.post("/register", status_code=201, response_model=UserResponse)
+
+def create_auth_response(user: User, db: Session) -> dict:
+    access_token = create_access_token(str(user.id), user.role)
+    refresh_token, jwtid = create_refresh_token(str(user.id))
+
+    db_token = RefreshToken(
+        jwtid=jwtid,
+        user_id=user.id,
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.refresh_token_expire_days),
+    )
+    db.add(db_token)
+    db.commit()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": user,
+    }
+
+
+@router.post("/register", status_code=201, response_model=AuthResponse)
 def register_user(body: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == body.email).first()
     
@@ -25,10 +46,10 @@ def register_user(body: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    return user
+    return create_auth_response(user, db)
 
 
-@router.post("/login", response_model=UserResponse)
+@router.post("/login", response_model=AuthResponse)
 def login(body: LoginDto, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
 
@@ -38,24 +59,7 @@ def login(body: LoginDto, db: Session = Depends(get_db)):
     if not verify_password(body.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    access_token = create_access_token(str(user.id), user.role)
-    refresh_token, jwtid = create_refresh_token(str(user.id))
-
-    # Persist the refresh token
-    db_token = RefreshToken(
-        jwtid=jwtid,
-        user_id=user.id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
-    )
-    db.add(db_token)
-    db.commit()
-
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "user": user
-    }
+    return create_auth_response(user, db)
 
 @router.post("/refresh")
 def refresh_tokens(body: RefreshSchema, db: Session = Depends(get_db)):
@@ -96,7 +100,8 @@ def refresh_tokens(body: RefreshSchema, db: Session = Depends(get_db)):
     db.add(RefreshToken(
         jwtid=new_jwtid,
         user_id=user_id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.refresh_token_expire_days),
     ))
     db.commit()
 

@@ -32,6 +32,13 @@ class UserResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AuthResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
 class LoginDto(BaseModel):
     email: EmailStr
     password: str
@@ -45,4 +52,3 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
     onboarding_status: Optional[OnboardingStatus] = None
-
