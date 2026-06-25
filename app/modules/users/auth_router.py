@@ -42,7 +42,7 @@ def register_user(body: UserCreate, db: Session = Depends(get_db)):
     
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
-    user = User(email=body.email, password=hash_password(body.password))
+    user = User(email=body.email, password=hash_password(body.password), role=body.role)
     db.add(user)
     db.commit()
     db.refresh(user)
