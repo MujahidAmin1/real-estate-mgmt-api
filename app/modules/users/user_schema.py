@@ -52,3 +52,7 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
     onboarding_status: Optional[OnboardingStatus] = None
+
+
+class OnboardingStatusUpdate(BaseModel):
+    onboarding_status: OnboardingStatus

@@ -4,7 +4,7 @@ from app.core.config import settings
 from app.db.database import get_db
 from app.utils.dependencies import get_current_user
 from app.modules.users.models.refresh_tokens import RefreshToken
-from app.modules.users.user_schema import AuthResponse, LoginDto, RefreshSchema, UserCreate
+from app.modules.users.user_schema import AuthResponse, LoginDto, RefreshSchema, UserCreate, OnboardingStatusUpdate, UserResponse
 from app.modules.users.models.user import User
 from sqlalchemy.orm import Session
 from app.utils import jwt
@@ -122,3 +122,16 @@ def logout(body: RefreshSchema, db: Session = Depends(get_db)):
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
     return user
+
+
+@router.patch("/onboarding-status", response_model=UserResponse)
+def patch_onboarding_status(
+    body: OnboardingStatusUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user.onboarding_status = body.onboarding_status
+    db.commit()
+    db.refresh(user)
+    return user
+
