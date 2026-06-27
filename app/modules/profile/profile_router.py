@@ -11,7 +11,7 @@ from app.modules.profile.profile_schema import AgentProfileResponse, AgentProfil
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 
-@router.put("/", response_model=UserProfileResponse)
+@router.put("", response_model=UserProfileResponse)
 def upsert_profile(
     data: UserProfileUpdate,
     current_user: User = Depends(get_current_user),
@@ -37,7 +37,7 @@ def upsert_profile(
     db.refresh(profile)
     return profile
 
-@router.get("/", response_model=UserProfileResponse)
+@router.get("", response_model=UserProfileResponse)
 def get_user_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
