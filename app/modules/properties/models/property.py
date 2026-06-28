@@ -81,8 +81,10 @@ class Property(Base):
     images: Mapped[list[PropertyImage]] = relationship(
         "PropertyImage",
         back_populates="property",
-        cascade="all, delete-orphan"
-    )
+        cascade="all, delete-orphan",
+        order_by="PropertyImage.sort_order",
+        )
+    
     
     favorites = relationship(
         "Favorite",

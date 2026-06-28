@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
 
 
@@ -21,6 +21,7 @@ class PropertyImageResponse(BaseModel):
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+    
 
 
 class PropertyCreate(BaseModel):
@@ -83,4 +84,4 @@ class PropertyResponse(BaseModel):
     updated_at: Optional[datetime] = None
     images: list[PropertyImageResponse] = []
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

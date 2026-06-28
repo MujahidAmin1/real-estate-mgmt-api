@@ -68,7 +68,6 @@ async def create_property(
         location_text=location_text,
         latitude=latitude,
         longitude=longitude,
-        image_urls=",".join(r["url"] for r in upload_results),
     )
     db.add(property)
     db.flush()
@@ -89,7 +88,7 @@ async def create_property(
     return property
 
 @router.put("/{property_id}", response_model=PropertyResponse)
-def update_post(
+def update_property(
     property_id: uuid.UUID,
     body: PropertyUpdate,
     db: Session = Depends(get_db),
@@ -185,3 +184,21 @@ def get_properties(
             pages=-(-total // pagination.limit)
         )
     )
+    
+@router.get('/{agent_id}')
+def get_your_listings(
+  agent_id = uuid.UUID,
+  db: Session = Depends(get_db),
+  current_user: User = Depends(require_role(UserRole.agent, UserRole.admin)),
+  filters: PropertyFilters = Depends(),
+):
+    properties = db.query(Property).filter(Property.agent_id == agent_id)
+    if filters.property_status:
+        query = properties.filter(
+            Property.property_type == filters.property_type
+        )
+    return properties
+
+
+
+    
