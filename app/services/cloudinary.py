@@ -1,5 +1,9 @@
+import time
+
 import cloudinary
 import cloudinary.uploader
+from cloudinary.utils import api_sign_request
+
 from app.core.config import settings
 
 cloudinary.config(
@@ -9,12 +13,23 @@ cloudinary.config(
     secure=True
 )
 
-def upload_image(file: bytes, folder: str = "property") -> dict:
-    result: dict = cloudinary.uploader.upload(file, folder=folder)
-    return {
-        "url": result["secure_url"],
-        "public_id": result["public_id"]
+
+def generate_upload_signature(folder: str = "general") -> dict:
+    timestamp = int(time.time())
+    params = {
+        "timestamp": timestamp,
+        "folder": folder,
     }
+    signature = api_sign_request(params, settings.cloudinary_api_secret)
+
+    return {
+        "cloud_name": settings.cloudinary_cloud_name,
+        "api_key": settings.cloudinary_api_key,
+        "timestamp": timestamp,
+        "signature": signature,
+        "folder": folder,
+    }
+
 
 def delete_image(public_id: str) -> None:
     cloudinary.uploader.destroy(public_id)

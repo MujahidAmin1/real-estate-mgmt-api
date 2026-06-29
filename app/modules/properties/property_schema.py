@@ -2,12 +2,15 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, field_validator
+
 from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
 
 
-class PropertyImageCreate(BaseModel):
+class ImageMetadata(BaseModel):
     image_url: str
+    public_id: str
     is_primary: bool = False
     sort_order: int = 0
 
@@ -16,12 +19,12 @@ class PropertyImageResponse(BaseModel):
     id: UUID
     property_id: UUID
     image_url: str
+    public_id: str
     is_primary: bool
     sort_order: int
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
-    
 
 
 class PropertyCreate(BaseModel):
@@ -38,6 +41,7 @@ class PropertyCreate(BaseModel):
     location_text: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    images: list[ImageMetadata]
 
     @field_validator("price")
     @classmethod
