@@ -8,20 +8,12 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
 
 
-class ImageMetadata(BaseModel):
-    image_url: str
-    public_id: str
-    is_primary: bool = False
-    sort_order: int = 0
-
-
 class PropertyImageResponse(BaseModel):
     id: UUID
     property_id: UUID
     image_url: str
     public_id: str
     is_primary: bool
-    sort_order: int
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
@@ -41,7 +33,7 @@ class PropertyCreate(BaseModel):
     location_text: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    images: list[ImageMetadata]
+    images: list[PropertyImageCreate]
 
     @field_validator("price")
     @classmethod
@@ -49,6 +41,12 @@ class PropertyCreate(BaseModel):
         if v <= 0:
             raise ValueError("Price must be greater than 0")
         return v
+
+
+class PropertyImageCreate(BaseModel):
+    image_url: str
+    public_id: str
+    is_primary: bool = False
 
 
 class PropertyUpdate(BaseModel):
@@ -77,7 +75,6 @@ class PropertyResponse(BaseModel):
     property_type: PropertyType
     listing_type: ListingType
     status: PropertyStatus
-    image_urls: str
     bedrooms: Optional[int] = None
     bathrooms: Optional[int] = None
     size_sqm: Optional[float] = None

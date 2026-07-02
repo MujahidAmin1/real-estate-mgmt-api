@@ -1,14 +1,18 @@
 from __future__ import annotations
-
-from typing import Optional
+from decimal import Decimal
+from typing import Annotated, Optional
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.pagination_schema import PaginatedResponse, PaginationMeta
-from app.services.cloudinary import delete_image
+from app.services.cloudinary import (
+    CloudinaryUploadError,
+    InvalidImageFileError,
+    delete_image,
+    upload_images,
+)
 from app.db.database import get_db
 from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
 from app.modules.properties.property_filters import PropertyFilters
@@ -17,7 +21,6 @@ from app.modules.properties.models.property import Property
 from app.modules.properties.models.property_image import PropertyImage
 from app.modules.users.models.user import User
 from app.modules.properties.property_schema import (
-    PropertyCreate,
     PropertyResponse,
     PropertyUpdate,
 )
@@ -29,49 +32,73 @@ router = APIRouter(prefix="/properties", tags=["Properties"])
 
 @router.post("/", status_code=201, response_model=PropertyResponse)
 def create_property(
-    body: PropertyCreate,
+    title: Annotated[str, Form(...)],
+    description: Annotated[str, Form(...)],
+    price: Annotated[Decimal, Form(...)],
+    location_text: Annotated[str, Form(...)],
+    property_type: Annotated[PropertyType, Form(...)],
+    listing_type: Annotated[ListingType, Form(...)],
+    images: Annotated[list[UploadFile], File(...)],
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.agent, UserRole.admin)),
+    currency: Annotated[str, Form()] = "NGN",
+    status: Annotated[PropertyStatus, Form()] = PropertyStatus.available,
+    bedrooms: Annotated[Optional[int], Form()] = None,
+    bathrooms: Annotated[Optional[int], Form()] = None,
+    size_sqm: Annotated[Optional[float], Form()] = None,
+    latitude: Annotated[Optional[float], Form()] = None,
+    longitude: Annotated[Optional[float], Form()] = None,
 ):
-    if not body.images:
-        raise HTTPException(status_code=422, detail="At least one image is required")
+    if price <= 0:
+        raise HTTPException(status_code=422, detail="Price must be greater than 0")
 
-    property = Property(
-        agent_id=current_user.id,
-        title=body.title,
-        description=body.description,
-        price=body.price,
-        currency=body.currency,
-        property_type=body.property_type,
-        listing_type=body.listing_type,
-        status=body.status,
-        bedrooms=body.bedrooms,
-        bathrooms=body.bathrooms,
-        size_sqm=body.size_sqm,
-        location_text=body.location_text,
-        latitude=body.latitude,
-        longitude=body.longitude,
-    )
-    db.add(property)
-    db.flush()
+    try:
+        uploaded_images = upload_images(images, folder="properties")
+    except InvalidImageFileError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except CloudinaryUploadError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    db.add_all(
-        [
-            PropertyImage(
-                property_id=property.id,
-                image_url=img.image_url,
-                public_id=img.public_id,
-                is_primary=img.is_primary,
-                sort_order=img.sort_order,
-            )
-            for img in body.images
-        ]
-    )
+    try:
+        property = Property(
+            agent_id=current_user.id,
+            title=title,
+            description=description,
+            price=price,
+            currency=currency,
+            property_type=property_type,
+            listing_type=listing_type,
+            status=status,
+            bedrooms=bedrooms,
+            bathrooms=bathrooms,
+            size_sqm=size_sqm,
+            location_text=location_text,
+            latitude=latitude,
+            longitude=longitude,
+        )
+        db.add(property)
+        db.flush()
 
-    property.image_urls = ",".join(img.image_url for img in body.images)
+        db.add_all(
+            [
+                PropertyImage(
+                    property_id=property.id,
+                    image_url=img.image_url,
+                    public_id=img.public_id,
+                    is_primary=index == 0,
+                )
+                for index, img in enumerate(uploaded_images)
+            ]
+        )
 
-    db.commit()
-    db.refresh(property)
+        db.commit()
+        db.refresh(property)
+    except Exception:
+        db.rollback()
+        for image in uploaded_images:
+            delete_image(image.public_id)
+        raise
+
     return property
 
 

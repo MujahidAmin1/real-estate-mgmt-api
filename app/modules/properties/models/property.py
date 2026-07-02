@@ -52,8 +52,6 @@ class Property(Base):
         server_default=PropertyStatus.available.value
     )
     
-    image_urls: Mapped[str] = mapped_column(String, nullable=False, server_default="")
-    
     bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     bathrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -82,7 +80,6 @@ class Property(Base):
         "PropertyImage",
         back_populates="property",
         cascade="all, delete-orphan",
-        order_by="PropertyImage.sort_order",
         )
     
     

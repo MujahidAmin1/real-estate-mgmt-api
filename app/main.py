@@ -1,6 +1,9 @@
 from contextlib import asynccontextmanager
+from typing import Any
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from app.core.apscheduler import delete_expired_tokens
 from app.db.database import engine, Base
@@ -8,7 +11,6 @@ from app.modules.admin import admin_router
 from app.modules.payments import payment_router
 from app.modules.profile import profile_router
 from app.modules.properties import favourites_router
-from app.modules.uploads import upload_routes
 from app.modules.users import auth_router
 from app.modules.properties import property_routes
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -25,14 +27,45 @@ Base.metadata.create_all(bind=engine)
 scheduler: BackgroundScheduler = BackgroundScheduler()
 
 app = FastAPI(title="Real Estate Management API")
+app.openapi_version = "3.0.3"
 
-app.include_router(upload_routes.router)
 app.include_router(admin_router.router)
 app.include_router(auth_router.router)
 app.include_router(profile_router.router)
 app.include_router(property_routes.router)
 app.include_router(favourites_router.router)
 app.include_router(payment_router.router)
+
+
+def use_swagger_file_upload_schema(value: Any) -> None:
+    if isinstance(value, dict):
+        if value.get("contentMediaType") == "application/octet-stream":
+            value.pop("contentMediaType", None)
+            value["format"] = "binary"
+
+        for child in value.values():
+            use_swagger_file_upload_schema(child)
+    elif isinstance(value, list):
+        for child in value:
+            use_swagger_file_upload_schema(child)
+
+
+def custom_openapi() -> dict[str, Any]:
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+        openapi_version=app.openapi_version,
+    )
+    use_swagger_file_upload_schema(openapi_schema)
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 @app.get("/")
 def read_root():
