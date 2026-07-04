@@ -203,16 +203,36 @@ def get_property(
     return property
 
 
-@router.get("/agent/{agent_id}")
+@router.get("/agent/{agent_id}", response_model=PaginatedResponse[PropertyResponse])
 def get_agent_listings(
     agent_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.agent, UserRole.admin)),
     filters: PropertyFilters = Depends(),
+    pagination: PaginationParams = Depends(),
 ):
     query = db.query(Property).filter(Property.agent_id == agent_id)
 
     if filters.property_status:
         query = query.filter(Property.status == filters.property_status)
 
-    return query.all()
+    total = query.count()
+
+    properties = (
+        query
+        .order_by(Property.created_at.desc())
+        .offset(pagination.offset)
+        .limit(pagination.limit)
+        .all()
+    )
+
+    return PaginatedResponse(
+        data=properties,
+        meta=PaginationMeta(
+            total=total,
+            page=pagination.page,
+            limit=pagination.limit,
+            pages=-(-total // pagination.limit),
+        ),
+    )
+    
