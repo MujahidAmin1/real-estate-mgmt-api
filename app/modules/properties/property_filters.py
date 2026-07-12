@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.modules.properties.property_enum import PropertyType, ListingType, PropertyStatus
+from app.modules.properties.property_enums import ListingType, PropertyStatus, PropertyType
 
 
 class PropertyFilters(BaseModel):

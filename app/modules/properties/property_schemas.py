@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from app.modules.properties.property_enum import ListingType, PropertyStatus, PropertyType
+from app.modules.properties.property_enums import ListingType, PropertyStatus, PropertyType
 
 
 class PropertyImageResponse(BaseModel):
@@ -17,6 +17,12 @@ class PropertyImageResponse(BaseModel):
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class PropertyImageCreate(BaseModel):
+    image_url: str
+    public_id: str
+    is_primary: bool = False
 
 
 class PropertyCreate(BaseModel):
@@ -41,12 +47,6 @@ class PropertyCreate(BaseModel):
         if v <= 0:
             raise ValueError("Price must be greater than 0")
         return v
-
-
-class PropertyImageCreate(BaseModel):
-    image_url: str
-    public_id: str
-    is_primary: bool = False
 
 
 class PropertyUpdate(BaseModel):

@@ -2,8 +2,8 @@ import hashlib, hmac, json, uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.db.database import get_db
 from app.modules.payments.model.payment_model import Payment, PaymentStatus
-from app.modules.properties.models.property import Property
-from app.modules.users.models.user import User
+from app.modules.properties.property_models import Property
+from app.modules.users.auth_models import User
 from app.services.payments import initialize_transaction, verify_transaction
 from app.utils.dependencies import get_current_user
 from app.utils.exceptions import NotFoundException

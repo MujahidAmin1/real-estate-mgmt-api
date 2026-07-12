@@ -1,7 +1,7 @@
 # scheduler.py
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.db.database import SessionLocal
-from app.modules.users.models.refresh_tokens import RefreshToken
+from app.modules.users.auth_models import RefreshToken
 from datetime import datetime, timezone
 
 def delete_expired_tokens():

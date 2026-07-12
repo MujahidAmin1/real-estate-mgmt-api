@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.modules.users.user_enums import OnboardingStatus, UserRole
+from app.modules.users.auth_enums import OnboardingStatus, UserRole
 
 
 class UserCreate(BaseModel):
@@ -42,7 +43,7 @@ class AuthResponse(BaseModel):
 class LoginDto(BaseModel):
     email: EmailStr
     password: str
-    
+
 class RefreshSchema(BaseModel):
     refresh_token: str
 

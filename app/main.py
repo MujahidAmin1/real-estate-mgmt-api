@@ -7,12 +7,11 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from app.core.apscheduler import delete_expired_tokens
 from app.db.database import engine, Base
-from app.modules.admin import admin_router
+from app.modules.admin import router as admin_router
 from app.modules.payments import payment_router
-from app.modules.profile import profile_router
-from app.modules.properties import favourites_router
-from app.modules.users import auth_router
-from app.modules.properties import property_routes
+from app.modules.profile import router as profile_router
+from app.modules.users import router as auth_router
+from app.modules.properties import router as properties_router
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.utils.exceptions import (
     NotFoundException,
@@ -29,11 +28,10 @@ scheduler: BackgroundScheduler = BackgroundScheduler()
 app = FastAPI(title="Real Estate Management API")
 app.openapi_version = "3.0.3"
 
-app.include_router(admin_router.router)
-app.include_router(auth_router.router)
-app.include_router(profile_router.router)
-app.include_router(property_routes.router)
-app.include_router(favourites_router.router)
+app.include_router(admin_router)
+app.include_router(auth_router)
+app.include_router(profile_router)
+app.include_router(properties_router)
 app.include_router(payment_router.router)
 
 

@@ -6,12 +6,10 @@ class PropertyType(str, enum.Enum):
     land = "land"
     commercial = "commercial"
 
-
 class ListingType(str, enum.Enum):
     sale = "sale"
     rent = "rent"
     shortlet = "shortlet"
-
 
 class PropertyStatus(str, enum.Enum):
     available = "available"
