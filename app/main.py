@@ -8,18 +8,13 @@ from fastapi.responses import JSONResponse
 from app.core.apscheduler import delete_expired_tokens
 from app.db.database import engine, Base
 from app.modules.admin import router as admin_router
+from app.modules.conversation import router as conversation_router
 from app.modules.payments import payment_router
 from app.modules.profile import router as profile_router
 from app.modules.users import router as auth_router
 from app.modules.properties import router as properties_router
 from apscheduler.schedulers.background import BackgroundScheduler
-from app.utils.exceptions import (
-    NotFoundException,
-    ForbiddenException,
-    UnauthorizedException,
-    ConflictException,
-    BadRequestException
-)
+from app.utils.exceptions import AppError
 
 
 Base.metadata.create_all(bind=engine)
@@ -33,6 +28,7 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(properties_router)
 app.include_router(payment_router.router)
+app.include_router(conversation_router)
 
 
 def use_swagger_file_upload_schema(value: Any) -> None:
@@ -81,25 +77,9 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 
-@app.exception_handler(NotFoundException)
-async def not_found_handler(request: Request, exc: NotFoundException):
-    return JSONResponse(status_code=404, content={"detail": exc.detail})
-
-@app.exception_handler(ForbiddenException)
-async def forbidden_handler(request: Request, exc: ForbiddenException):
-    return JSONResponse(status_code=403, content={"detail": exc.detail})
-
-@app.exception_handler(UnauthorizedException)
-async def unauthorized_handler(request: Request, exc: UnauthorizedException):
-    return JSONResponse(status_code=401, content={"detail": exc.detail})
-
-@app.exception_handler(ConflictException)
-async def conflict_handler(request: Request, exc: ConflictException):
-    return JSONResponse(status_code=409, content={"detail": exc.detail})
-
-@app.exception_handler(BadRequestException)
-async def bad_request_handler(request: Request, exc: BadRequestException):
-    return JSONResponse(status_code=400, content={"detail": exc.detail})
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 # handles Pydantic validation errors (wrong types, missing fields)
 @app.exception_handler(RequestValidationError)

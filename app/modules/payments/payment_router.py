@@ -6,7 +6,7 @@ from app.modules.properties.property_models import Property
 from app.modules.users.auth_models import User
 from app.services.payments import initialize_transaction, verify_transaction
 from app.utils.dependencies import get_current_user
-from app.utils.exceptions import NotFoundException
+from app.utils.exceptions import AppError
 from sqlalchemy.orm import Session
 from app.core.config import settings
 
@@ -20,7 +20,7 @@ async def initialize_payment(
 ):
     property = db.query(Property).filter(Property.id == property_id).first()
     if not property:
-        raise NotFoundException("Property not found")
+        raise AppError(404, "Property not found")
 
     reference = f"RE-{uuid.uuid7()}"  # unique per transaction
 

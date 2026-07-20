@@ -7,23 +7,14 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.core.pagination_schema import PaginatedResponse, PaginationMeta
+from app.core.pagination_schema import PaginatedResponse
 from app.db.database import get_db
 from app.modules.properties.property_enums import ListingType, PropertyStatus, PropertyType
-from app.modules.properties.property_exceptions import (
-    CloudinaryOperationError,
-    FavoriteAlreadyExists,
-    FavoriteNotFound,
-    InvalidImageError,
-    PropertyNotFound,
-)
-from app.modules.properties.property_filters import PropertyFilters
-from app.modules.properties.property_schemas import PropertyResponse, PropertyUpdate
+from app.modules.properties.property_schemas import PropertyFilters, PropertyResponse, PropertyUpdate
 from app.modules.properties.property_service import PropertyService
 from app.modules.users.auth_enums import UserRole
 from app.modules.users.auth_models import User
 from app.utils.dependencies import PaginationParams, require_role
-from app.utils.exceptions import ForbiddenException
 
 router = APIRouter(prefix="/properties", tags=["Properties"])
 
@@ -51,28 +42,23 @@ def create_property(
         raise HTTPException(status_code=422, detail="Price must be greater than 0")
 
     service = PropertyService(db)
-    try:
-        return service.create_property(
-            current_user=current_user,
-            title=title,
-            description=description,
-            price=price,
-            location_text=location_text,
-            property_type=property_type,
-            listing_type=listing_type,
-            images=images,
-            currency=currency,
-            status=status,
-            bedrooms=bedrooms,
-            bathrooms=bathrooms,
-            size_sqm=size_sqm,
-            latitude=latitude,
-            longitude=longitude,
-        )
-    except InvalidImageError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except CloudinaryOperationError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return service.create_property(
+        current_user=current_user,
+        title=title,
+        description=description,
+        price=price,
+        location_text=location_text,
+        property_type=property_type,
+        listing_type=listing_type,
+        images=images,
+        currency=currency,
+        status=status,
+        bedrooms=bedrooms,
+        bathrooms=bathrooms,
+        size_sqm=size_sqm,
+        latitude=latitude,
+        longitude=longitude,
+    )
 
 
 @router.put("/{property_id}", response_model=PropertyResponse)
@@ -83,12 +69,7 @@ def update_property(
     current_user: User = Depends(require_role(UserRole.agent)),
 ):
     service = PropertyService(db)
-    try:
-        return service.update_property(property_id, body, current_user)
-    except PropertyNotFound:
-        raise HTTPException(status_code=404, detail="Property not found")
-    except ForbiddenException as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+    return service.update_property(property_id, body, current_user)
 
 
 @router.delete("/{property_id}", status_code=204)
@@ -98,12 +79,7 @@ def delete_property(
     current_user: User = Depends(require_role(UserRole.agent, UserRole.admin)),
 ):
     service = PropertyService(db)
-    try:
-        service.delete_property(property_id, current_user)
-    except PropertyNotFound:
-        raise HTTPException(status_code=404, detail="Property not found")
-    except ForbiddenException as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+    service.delete_property(property_id, current_user)
 
 
 @router.get("/", response_model=PaginatedResponse[PropertyResponse])
@@ -113,7 +89,10 @@ def get_properties(
     db: Session = Depends(get_db),
 ):
     service = PropertyService(db)
-    return service.get_properties(filters, pagination.page, pagination.limit)
+    return service.get_properties(
+        filters.property_type, filters.listing_type, filters.property_status,
+        filters.min_price, filters.max_price, pagination.page, pagination.limit
+    )
 
 
 @router.get("/{property_id}")
@@ -122,10 +101,7 @@ def get_property(
     db: Session = Depends(get_db),
 ):
     service = PropertyService(db)
-    try:
-        return service.get_property(property_id)
-    except PropertyNotFound:
-        raise HTTPException(status_code=404, detail="Property not found")
+    return service.get_property(property_id)
 
 
 @router.get("/agent/{agent_id}", response_model=PaginatedResponse[PropertyResponse])
@@ -149,12 +125,7 @@ def favourite_property(
     current_user: User = Depends(require_role(UserRole.client)),
 ):
     service = PropertyService(db)
-    try:
-        return service.add_favorite(property_id, current_user)
-    except PropertyNotFound:
-        raise HTTPException(status_code=404, detail="Property not found")
-    except FavoriteAlreadyExists as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+    return service.add_favorite(property_id, current_user)
 
 
 @router.delete("/{property_id}/favorite", status_code=204)
@@ -164,7 +135,4 @@ def unfavourite_property(
     current_user: User = Depends(require_role(UserRole.client)),
 ):
     service = PropertyService(db)
-    try:
-        service.remove_favorite(property_id, current_user)
-    except FavoriteNotFound:
-        raise HTTPException(status_code=404, detail="Favorite not found")
+    service.remove_favorite(property_id, current_user)

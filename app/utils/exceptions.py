@@ -1,19 +1,10 @@
-class NotFoundException(Exception):
-    def __init__(self, detail: str = "Resource not found"):
-        self.detail = detail
+from __future__ import annotations
 
-class ForbiddenException(Exception):
-    def __init__(self, detail: str = "Insufficient permissions"):
-        self.detail = detail
 
-class UnauthorizedException(Exception):
-    def __init__(self, detail: str = "Unauthorized"):
-        self.detail = detail
+class AppError(Exception):
+    """Single application-level exception with an HTTP status code and message."""
 
-class ConflictException(Exception):
-    def __init__(self, detail: str = "Resource already exists"):
+    def __init__(self, status_code: int = 500, detail: str = "Internal server error"):
+        self.status_code = status_code
         self.detail = detail
-
-class BadRequestException(Exception):
-    def __init__(self, detail: str = "Bad request"):
-        self.detail = detail
+        super().__init__(self.detail)

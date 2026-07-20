@@ -8,21 +8,7 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.pagination_schema import PaginatedResponse, PaginationMeta
-from app.modules.properties.property_exceptions import (
-    CloudinaryOperationError,
-    FavoriteAlreadyExists,
-    FavoriteNotFound,
-    ImageUploadError,
-    InvalidImageError,
-    PropertyNotFound,
-)
-from app.modules.properties.property_filters import PropertyFilters
 from app.modules.properties.property_models import Favorite, Property, PropertyImage
-from app.modules.properties.property_repository import (
-    FavoriteRepository,
-    PropertyImageRepository,
-    PropertyRepository,
-)
 from app.modules.users.auth_enums import UserRole
 from app.modules.users.auth_models import User
 from app.services.cloudinary import (
@@ -31,15 +17,12 @@ from app.services.cloudinary import (
     delete_image,
     upload_images,
 )
-from app.utils.exceptions import ForbiddenException
+from app.utils.exceptions import AppError
 
 
 class PropertyService:
     def __init__(self, db: Session):
         self.db = db
-        self.property_repo = PropertyRepository(db)
-        self.image_repo = PropertyImageRepository(db)
-        self.favorite_repo = FavoriteRepository(db)
 
     def create_property(
         self,
@@ -62,9 +45,9 @@ class PropertyService:
         try:
             uploaded_images = upload_images(images, folder="properties")
         except InvalidImageFileError as exc:
-            raise InvalidImageError(str(exc)) from exc
+            raise AppError(422, str(exc)) from exc
         except CloudinaryUploadError as exc:
-            raise CloudinaryOperationError(str(exc)) from exc
+            raise AppError(502, str(exc)) from exc
 
         try:
             property = Property(
@@ -83,18 +66,18 @@ class PropertyService:
                 latitude=latitude,
                 longitude=longitude,
             )
-            self.property_repo.create(property)
+            self.db.add(property)
+            self.db.flush()
 
-            images_models = [
-                PropertyImage(
-                    property_id=property.id,
-                    image_url=img.image_url,
-                    public_id=img.public_id,
-                    is_primary=index == 0,
+            for index, img in enumerate(uploaded_images):
+                self.db.add(
+                    PropertyImage(
+                        property_id=property.id,
+                        image_url=img.image_url,
+                        public_id=img.public_id,
+                        is_primary=index == 0,
+                    )
                 )
-                for index, img in enumerate(uploaded_images)
-            ]
-            self.image_repo.create_all(images_models)
 
             self.db.commit()
             self.db.refresh(property)
@@ -109,36 +92,59 @@ class PropertyService:
     def update_property(
         self, property_id: uuid.UUID, body, current_user: User
     ) -> Property:
-        property = self.property_repo.find_by_id(property_id)
+        property = self.db.query(Property).filter(Property.id == property_id).first()
         if not property:
-            raise PropertyNotFound()
+            raise AppError(404, "Property not found")
 
         if property.agent_id != current_user.id and current_user.role != UserRole.admin:
-            raise ForbiddenException()
+            raise AppError(403, "Insufficient permissions")
 
         for key, value in body.model_dump(exclude_unset=True).items():
             setattr(property, key, value)
 
-        return self.property_repo.save(property)
+        self.db.commit()
+        self.db.refresh(property)
+        return property
 
     def delete_property(self, property_id: uuid.UUID, current_user: User) -> None:
-        property = self.property_repo.find_by_id(property_id)
+        property = self.db.query(Property).filter(Property.id == property_id).first()
         if not property:
-            raise PropertyNotFound()
+            raise AppError(404, "Property not found")
 
         if property.agent_id != current_user.id and current_user.role != UserRole.admin:
-            raise ForbiddenException()
+            raise AppError(403, "Insufficient permissions")
 
         for image in property.images:
             delete_image(image.public_id)
 
-        self.property_repo.delete(property)
+        self.db.delete(property)
+        self.db.commit()
 
     def get_properties(
-        self, filters: PropertyFilters, page: int, limit: int
+        self, property_type, listing_type, property_status, min_price, max_price, page: int, limit: int
     ) -> PaginatedResponse:
+        query = self.db.query(Property)
+
+        if property_type:
+            query = query.filter(Property.property_type == property_type)
+        if listing_type:
+            query = query.filter(Property.listing_type == listing_type)
+        if property_status:
+            query = query.filter(Property.status == property_status)
+        if min_price is not None:
+            query = query.filter(Property.price >= min_price)
+        if max_price is not None:
+            query = query.filter(Property.price <= max_price)
+
+        total = query.count()
         offset = (page - 1) * limit
-        properties, total = self.property_repo.find_all(filters, offset, limit)
+        properties = (
+            query.order_by(Property.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
         return PaginatedResponse(
             data=properties,
             meta=PaginationMeta(
@@ -150,9 +156,9 @@ class PropertyService:
         )
 
     def get_property(self, property_id: uuid.UUID) -> Property:
-        property = self.property_repo.find_by_id(property_id)
+        property = self.db.query(Property).filter(Property.id == property_id).first()
         if not property:
-            raise PropertyNotFound()
+            raise AppError(404, "Property not found")
         return property
 
     def get_agent_listings(
@@ -162,10 +168,20 @@ class PropertyService:
         page: int,
         limit: int,
     ) -> PaginatedResponse:
+        query = self.db.query(Property).filter(Property.agent_id == agent_id)
+
+        if status:
+            query = query.filter(Property.status == status)
+
+        total = query.count()
         offset = (page - 1) * limit
-        properties, total = self.property_repo.find_by_agent(
-            agent_id, status, offset, limit
+        properties = (
+            query.order_by(Property.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
         )
+
         return PaginatedResponse(
             data=properties,
             meta=PaginationMeta(
@@ -177,24 +193,28 @@ class PropertyService:
         )
 
     def add_favorite(self, property_id: uuid.UUID, current_user: User) -> dict:
-        property = self.property_repo.find_by_id(property_id)
+        property = self.db.query(Property).filter(Property.id == property_id).first()
         if not property:
-            raise PropertyNotFound()
+            raise AppError(404, "Property not found")
 
-        existing = self.favorite_repo.find_by_user_and_property(
-            current_user.id, property_id
-        )
+        existing = self.db.query(Favorite).filter(
+            Favorite.user_id == current_user.id,
+            Favorite.property_id == property_id,
+        ).first()
         if existing:
-            raise FavoriteAlreadyExists()
+            raise AppError(409, "Property is already favorited")
 
-        favorite = Favorite(user_id=current_user.id, property_id=property_id)
-        self.favorite_repo.create(favorite)
+        self.db.add(Favorite(user_id=current_user.id, property_id=property_id))
+        self.db.commit()
         return {"message": "Property favorited successfully"}
 
     def remove_favorite(self, property_id: uuid.UUID, current_user: User) -> None:
-        favorite = self.favorite_repo.find_by_user_and_property(
-            current_user.id, property_id
-        )
+        favorite = self.db.query(Favorite).filter(
+            Favorite.user_id == current_user.id,
+            Favorite.property_id == property_id,
+        ).first()
         if not favorite:
-            raise FavoriteNotFound()
-        self.favorite_repo.delete(favorite)
+            raise AppError(404, "Favorite not found")
+
+        self.db.delete(favorite)
+        self.db.commit()

@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from app.db.database import get_db
-from app.modules.profile.profile_exceptions import ProfileNotFound
 from app.modules.profile.profile_schemas import (
     AgentProfileResponse,
     AgentProfileUpdate,
@@ -34,10 +33,7 @@ def get_user_profile(
     db: Session = Depends(get_db)
 ):
     service = ProfileService(db)
-    try:
-        return service.get_user_profile(current_user.id)
-    except ProfileNotFound:
-        raise HTTPException(status_code=404, detail="Profile not found")
+    return service.get_user_profile(current_user.id)
 
 
 @router.put("/agent_profile", response_model=AgentProfileResponse)
@@ -47,12 +43,9 @@ def upsert_agent_profile(
     db: Session = Depends(get_db)
 ):
     service = ProfileService(db)
-    try:
-        return service.upsert_agent_profile(
-            current_user.id, data.model_dump(exclude_unset=True), current_user
-        )
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
+    return service.upsert_agent_profile(
+        current_user.id, data.model_dump(exclude_unset=True), current_user
+    )
 
 
 @router.get("/agent_profile", response_model=AgentProfileResponse)
@@ -61,7 +54,4 @@ def get_agent_profile(
     db: Session = Depends(get_db)
 ):
     service = ProfileService(db)
-    try:
-        return service.get_agent_profile(current_user.id)
-    except ProfileNotFound:
-        raise HTTPException(status_code=404, detail="Profile not found")
+    return service.get_agent_profile(current_user.id)

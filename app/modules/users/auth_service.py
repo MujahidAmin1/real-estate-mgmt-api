@@ -3,14 +3,8 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.modules.users.auth_exceptions import (
-    EmailAlreadyRegistered,
-    InvalidCredentials,
-    TokenReuseDetected,
-    UserNotFound,
-    WrongTokenType,
-)
-from app.modules.users.auth_repository import RefreshTokenRepository, UserRepository
+from app.modules.users.auth_models import RefreshToken, User
+from app.utils.exceptions import AppError
 from app.utils.hashing import hash_password, verify_password
 from app.utils.jwt import create_access_token, create_refresh_token, verify_refresh_token
 
@@ -18,27 +12,26 @@ from app.utils.jwt import create_access_token, create_refresh_token, verify_refr
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
-        self.user_repo = UserRepository(db)
-        self.token_repo = RefreshTokenRepository(db)
 
     def register(self, email: str, password: str, role: str) -> dict:
-        existing = self.user_repo.find_by_email(email)
+        existing = self.db.query(User).filter(User.email == email).first()
         if existing:
-            raise EmailAlreadyRegistered()
+            raise AppError(409, "Email already registered")
 
-        user = self.user_repo.create(email, hash_password(password), role)
+        user = User(email=email, password=hash_password(password), role=role)
+        self.db.add(user)
         self.db.commit()
         self.db.refresh(user)
 
         return self._build_auth_response(user)
 
     def login(self, email: str, password: str) -> dict:
-        user = self.user_repo.find_by_email(email)
+        user = self.db.query(User).filter(User.email == email).first()
         if not user:
-            raise UserNotFound()
+            raise AppError(404, "User not found")
 
         if not verify_password(password, user.password):
-            raise InvalidCredentials()
+            raise AppError(401, "Invalid credentials")
 
         return self._build_auth_response(user)
 
@@ -46,31 +39,39 @@ class AuthService:
         payload = verify_refresh_token(refresh_token)
 
         if payload.get("type") != "refresh":
-            raise WrongTokenType()
+            raise AppError(401, "Wrong token type")
 
         jwtid = payload["jwtid"]
         user_id = payload["sub"]
 
-        db_token = self.token_repo.find_by_jwtid(jwtid)
+        db_token = (
+            self.db.query(RefreshToken)
+            .filter(RefreshToken.jwtid == jwtid, RefreshToken.revoked == False)
+            .first()
+        )
         if not db_token:
-            self.token_repo.revoke_all_for_user(user_id)
+            self.db.query(RefreshToken).filter(
+                RefreshToken.user_id == user_id
+            ).update({"revoked": True})
             self.db.commit()
-            raise TokenReuseDetected()
+            raise AppError(401, "Token reuse detected")
 
         db_token.revoked = True
         self.db.flush()
 
-        user = self.user_repo.find_by_id(user_id)
+        user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise UserNotFound()
+            raise AppError(401, "User not found")
 
         new_access = create_access_token(str(user.id), user.role)
         new_refresh, new_jwtid = create_refresh_token(user_id)
 
-        self.token_repo.create(
-            new_jwtid,
-            user.id,
-            datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
+        self.db.add(
+            RefreshToken(
+                jwtid=new_jwtid,
+                user_id=user.id,
+                expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
+            )
         )
         self.db.commit()
 
@@ -79,7 +80,9 @@ class AuthService:
     def logout(self, refresh_token: str) -> None:
         try:
             payload = verify_refresh_token(refresh_token)
-            self.token_repo.revoke_by_jwtid(payload["jwtid"])
+            self.db.query(RefreshToken).filter(
+                RefreshToken.jwtid == payload["jwtid"]
+            ).update({"revoked": True})
             self.db.commit()
         except ValueError:
             pass
@@ -92,10 +95,12 @@ class AuthService:
         access_token = create_access_token(str(user.id), user.role)
         refresh_token, jwtid = create_refresh_token(str(user.id))
 
-        self.token_repo.create(
-            jwtid,
-            user.id,
-            datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
+        self.db.add(
+            RefreshToken(
+                jwtid=jwtid,
+                user_id=user.id,
+                expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
+            )
         )
         self.db.commit()
 

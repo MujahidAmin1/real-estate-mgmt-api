@@ -1,14 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.modules.users.auth_exceptions import (
-    EmailAlreadyRegistered,
-    InvalidCredentials,
-    TokenReuseDetected,
-    UserNotFound,
-    WrongTokenType,
-)
 from app.modules.users.auth_models import User
 from app.modules.users.auth_schemas import (
     AuthResponse,
@@ -26,32 +19,17 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", status_code=201, response_model=AuthResponse)
 def register_user(body: UserCreate, db: Session = Depends(get_db)):
-    try:
-        return AuthService(db).register(body.email, body.password, body.role)
-    except EmailAlreadyRegistered:
-        raise HTTPException(status_code=409, detail="Email already registered")
+    return AuthService(db).register(body.email, body.password, body.role)
 
 
 @router.post("/login", response_model=AuthResponse)
 def login(body: LoginDto, db: Session = Depends(get_db)):
-    try:
-        return AuthService(db).login(body.email, body.password)
-    except UserNotFound:
-        raise HTTPException(status_code=404, detail="User not found")
-    except InvalidCredentials:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return AuthService(db).login(body.email, body.password)
 
 
 @router.post("/refresh")
 def refresh_tokens(body: RefreshSchema, db: Session = Depends(get_db)):
-    try:
-        return AuthService(db).refresh_tokens(body.refresh_token)
-    except WrongTokenType:
-        raise HTTPException(status_code=401, detail="Wrong token type")
-    except TokenReuseDetected:
-        raise HTTPException(status_code=401, detail="Token reuse detected")
-    except UserNotFound:
-        raise HTTPException(status_code=401, detail="User not found")
+    return AuthService(db).refresh_tokens(body.refresh_token)
 
 
 @router.post("/logout")
