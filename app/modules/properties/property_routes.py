@@ -19,7 +19,7 @@ from app.utils.dependencies import PaginationParams, require_role
 router = APIRouter(prefix="/properties", tags=["Properties"])
 
 
-@router.post("/", status_code=201, response_model=PropertyResponse)
+@router.post("", status_code=201, response_model=PropertyResponse)
 def create_property(
     title: Annotated[str, Form(...)],
     description: Annotated[str, Form(...)],
@@ -82,7 +82,7 @@ def delete_property(
     service.delete_property(property_id, current_user)
 
 
-@router.get("/", response_model=PaginatedResponse[PropertyResponse])
+@router.get("", response_model=PaginatedResponse[PropertyResponse])
 def get_properties(
     pagination: PaginationParams = Depends(),
     filters: PropertyFilters = Depends(),

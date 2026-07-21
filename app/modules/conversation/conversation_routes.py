@@ -37,7 +37,7 @@ def start_conversation(
     )
 
 
-@router.get("/", response_model=list[ConversationResponse])
+@router.get("", response_model=list[ConversationResponse])
 def list_conversations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
