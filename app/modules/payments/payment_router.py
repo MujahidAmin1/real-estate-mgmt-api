@@ -2,7 +2,7 @@ import hashlib, hmac, json, uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.db.database import get_db
 from app.modules.payments.model.payment_model import Payment, PaymentStatus
-from app.modules.payments.paymenr_schema import PaymentInitializeResponse
+from app.modules.payments.paymenr_schema import PaymentInitializeResponse, PaymentRead
 from app.modules.properties.property_models import Property
 from app.modules.users.auth_models import User
 from app.services.payments import initialize_transaction, verify_transaction
@@ -81,3 +81,18 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
         # here you can also trigger: send confirmation email, notify agent, etc.
 
     return {"status": "ok"}  # always return 200 to Paystack, even on failure
+
+
+@router.get("/{reference}", response_model=PaymentRead)
+async def get_payment_status(
+    reference: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    payment = db.query(Payment).filter(
+        Payment.reference == reference,
+        Payment.user_id == current_user.id,
+    ).first()
+    if not payment:
+        raise AppError(404, "Payment not found")
+    return payment
