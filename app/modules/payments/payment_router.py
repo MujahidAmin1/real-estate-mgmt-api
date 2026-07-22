@@ -2,6 +2,7 @@ import hashlib, hmac, json, uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.db.database import get_db
 from app.modules.payments.model.payment_model import Payment, PaymentStatus
+from app.modules.payments.paymenr_schema import PaymentInitializeResponse
 from app.modules.properties.property_models import Property
 from app.modules.users.auth_models import User
 from app.services.payments import initialize_transaction, verify_transaction
@@ -12,7 +13,7 @@ from app.core.config import settings
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
     
-@router.post("/initialize", status_code=201)
+@router.post("/initialize", status_code=201, response_model=PaymentInitializeResponse)
 async def initialize_payment(
     property_id: uuid.UUID,
     db: Session = Depends(get_db),
